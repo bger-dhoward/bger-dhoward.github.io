@@ -1,0 +1,11 @@
+<h1>This is a test</h1>
+<p>This is a test to see if I can format some output from Ollama as a webpage</p>
+
+<p>The category of this is {{ category }}.</p>
+<ul>
+{% for item in summary %}
+    <li>
+    {{item}}
+    </li>
+</ul>
+{% endfor %}
