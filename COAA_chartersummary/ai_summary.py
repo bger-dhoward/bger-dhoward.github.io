@@ -16,15 +16,26 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 RESPONSE_SPREADSHEET_ID = "1cHKk2LKpIdgBpFtBOD-awZhULixMA2iQwk_fRSUjlMA"
 RESPONSE_RANGE_NAME = "Responses!A1:F100"
 
+criteria_options = {
+    1:"Identify common themes as summaries. Provide only the summaries without any introductory text. Provide each as a single phrase or sentence on its own line. Separate out any responses that seem to be not related to the question and provide them at the end, prefixed with a '$' symbol.",
+    2:"Identify common themes as summaries. Provide only the summaries without any introductory text. Provide each as a single phrase or sentence on its own line. Provide at most 3 summaries",
+    }
+
+
 def get_user_responses_from_cloud():
     creds = None
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
-        creds.refresh(Request())
-    else:
-        flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-        creds = flow.run_local_server(port=0)
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "credentials.json", SCOPES
+            )
+            creds = flow.run_local_server(port=0)
+    # Save the credentials for the next run
     with open("token.json", "w") as token:
         token.write(creds.to_json())
     
@@ -42,7 +53,7 @@ def get_user_responses_from_cloud():
         if not values:
             print('no data found... is something wrong?')
             return
-        return values
+        return values[1:]
     except HttpError as err:
         pritn(err)
 
@@ -64,7 +75,7 @@ def generate_bger_survey_prompt(question, responses_text, criteria):
     prompt = f"""An interal survey asked the following question: '{question}'.
         The responses will be provided at the end of this message.
         Provide summaries of the responses using this criteria: {criteria}.
-        These are the responses: {responses_text}
+        These are the responses: \n{responses_text}
     """
     return prompt
 
@@ -79,9 +90,30 @@ def ask_model(prompt):
 
 if __name__ == "__main__":
     values = get_user_responses_from_cloud()
-    q1_responses = [row[2] for row in values]
-    q2_responses = [row[3] for row in values]
-    q3_responses = [row[4] for row in values]
+    q1_responses = "\n".join([row[2] for row in values])
+    q2_responses = "\n".join([row[3] for row in values])
+    q3_responses = "\n".join([row[4] for row in values])
+
+    q1 = "What would be your ideal 'work-from-home' setup? (Location, atmosphere, tools, etc)"
+    q2 = "What is the most exciting or interesting aspect of one of your current projects?"
+    q3 = "If you use any AI tools for work, what is the most common way you use it?"
+
+    criteria = criteria_options[2]
+
+    q_sets = zip([q1, q2, q3],[q1_responses, q2_responses, q3_responses])
+
+    for q, r in q_sets:
+        prompt = generate_bger_survey_prompt(q, r, criteria)
+        print("============\nQuestion\n")    
+        print(q)
+        print("============\nResponses\n")
+        print(r)
+        print("============\nPrompt\n")  
+        print(prompt)
+        response = ask_model(prompt)
+        print("============\nAI Summary\n")
+        print(response)
+        print("\n")
     
     """
     print(os.getcwd())
