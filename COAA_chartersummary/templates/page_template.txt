@@ -16,11 +16,11 @@
         <div class="column left-column">
             <h3>User Comments</h3>
             <ul>
-                <li>Medium-sized bullet one</li>
-                <li>Another medium point</li>
-                <li>More detail goes here</li>
-                <li>Important supporting info</li>
-                <li>Last medium bullet</li>
+                {% for item in user_responses %}
+                    <li>
+                    {{item}}
+                    </li>
+                {% endfor %}
             </ul>
         </div>
         <div class="column right-column">
@@ -37,6 +37,9 @@
 
     <footer>
         <p>Optional Footer Text</p>
+        <a href="work_from_home_setup.html">Q1: Work From Home</a>
+        <a href="interesting_project.html">Q2: Interesting Projects</a>
+        <a href="ai_tool_use.html">Q3: AI Tool Use</a>
         <img src="logo.png" alt="Logo" />
     </footer>
 </body>

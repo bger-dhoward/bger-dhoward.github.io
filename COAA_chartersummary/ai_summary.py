@@ -118,12 +118,14 @@ if __name__ == "__main__":
         print("============\nAI Summary\n")
         print(response)
         print("\n")
-        summary = response.split("\n")
+        user_responses = [ur for ur in r.split("\n") if len(ur) > 5]
+        summary = [s for s in response.split("\n") if len(s) > 5]
 
         results_filename = "pages/" + filename + ".html"
         category = filename
         context = {"category": category,
-                   "summary": summary}
+                   "summary": summary,
+                   "user_responses": user_responses}
         with open(results_filename, 'w', encoding='utf-8') as results_file:
             results_file.write(template.render(context))
     
