@@ -55,7 +55,7 @@ def get_user_responses_from_cloud():
             return
         return values[1:]
     except HttpError as err:
-        pritn(err)
+        print(err)
 
 def get_user_responses(filename):
     with open(filename, encoding='utf-8-sig') as file:
@@ -98,11 +98,15 @@ if __name__ == "__main__":
     q2 = "What is the most exciting or interesting aspect of one of your current projects?"
     q3 = "If you use any AI tools for work, what is the most common way you use it?"
 
+    filenames = ["work_from_home_setup",
+                 "interesting_project",
+                 "ai_tool_use"]
+
     criteria = criteria_options[2]
 
-    q_sets = zip([q1, q2, q3],[q1_responses, q2_responses, q3_responses])
+    q_sets = zip([q1, q2, q3],[q1_responses, q2_responses, q3_responses], filenames)
 
-    for q, r in q_sets:
+    for q, r, filename in q_sets:
         prompt = generate_bger_survey_prompt(q, r, criteria)
         print("============\nQuestion\n")    
         print(q)
@@ -114,6 +118,14 @@ if __name__ == "__main__":
         print("============\nAI Summary\n")
         print(response)
         print("\n")
+        summary = response.split("\n")
+
+        results_filename = "pages/" + filename + ".html"
+        category = filename
+        context = {"category": category,
+                   "summary": summary}
+        with open(results_filename, 'w', encoding='utf-8') as results_file:
+            results_file.write(template.render(context))
     
     """
     print(os.getcwd())
