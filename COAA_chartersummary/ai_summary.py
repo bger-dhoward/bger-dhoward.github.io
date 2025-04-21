@@ -108,16 +108,17 @@ if __name__ == "__main__":
 
     for q, r, filename in q_sets:
         prompt = generate_bger_survey_prompt(q, r, criteria)
+        response = ask_model(prompt)
         print("============\nQuestion\n")    
         print(q)
         print("============\nResponses\n")
         print(r)
         print("============\nPrompt\n")  
         print(prompt)
-        response = ask_model(prompt)
         print("============\nAI Summary\n")
         print(response)
         print("\n")
+        
         user_responses = [ur for ur in r.split("\n") if len(ur) > 5]
         summary = [s for s in response.split("\n") if len(s) > 5]
 
