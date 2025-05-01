@@ -2,6 +2,7 @@ import ollama
 import os
 import csv
 from jinja2 import Environment, FileSystemLoader
+import argparse
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -13,13 +14,31 @@ environment = Environment(loader=FileSystemLoader("templates/"))
 template = environment.get_template('page_template.txt')
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-RESPONSE_SPREADSHEET_ID = "1cHKk2LKpIdgBpFtBOD-awZhULixMA2iQwk_fRSUjlMA"
-RESPONSE_RANGE_NAME = "Responses!A1:F100"
+#RESPONSE_SPREADSHEET_ID = "1cHKk2LKpIdgBpFtBOD-awZhULixMA2iQwk_fRSUjlMA"
+RESPONSE_SPREADSHEET_ID = "1sPpnOZzu5X9uzwhgP1gVRLmIcajrmtw9SKM_E8jqCQs"
+#RESPONSE_RANGE_NAME = "Responses!A1:F100"
+
+RESPONSE_RANGES = {"q1": "Q1!A1:D200",
+                   "q2": "Q2!A1:D200",
+                   "q3": "Q3!A1:D200",
+                   }
 
 criteria_options = {
     1:"Identify common themes as summaries. Provide only the summaries without any introductory text. Provide each as a single phrase or sentence on its own line. Separate out any responses that seem to be not related to the question and provide them at the end, prefixed with a '$' symbol.",
     2:"Identify common themes as summaries. Provide only the summaries without any introductory text. Provide each as a single phrase or sentence on its own line. Provide at most 3 summaries",
     }
+
+parser = argparse.ArgumentParser(prog = "COAA Survey Summarizer")
+parser.add_argument('question', help='Which question to summarize (q1, q2, q3)')
+parser.add_argument('--file', help='Name of source data file to pull responses from in case of automation errors') # TODO: IMPLEMENT THIS FUNCTIONALITY
+args = parser.parse_args()
+question = args.question
+
+if question.lower() in RESPONSE_RANGES.keys():
+    RESPONSE_RANGE_NAME = RESPONSE_RANGES[question.lower()]
+else:
+    print(f"Question value '{question}' is not a valid question.")
+    exit()
 
 
 def get_user_responses_from_cloud():
