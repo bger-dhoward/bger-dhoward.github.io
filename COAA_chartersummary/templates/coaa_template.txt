@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Charters {{question_number}}</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <header>
+        <h1>COAA Connect: Why Good Projects Have Project Charters</h1><br>
+        <h2>Interactive: {{question_text}}</h2>
+    </header>
+
+    <div class="content">
+        <div class="column left-column">
+            <h3>Audience Responses:</h3>
+            <ul>
+                {% for item in responses %}
+                    <li>
+                    {{item}}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="column right-column">
+            <h3>Charter-style Synthesis:</h3>
+            <ul>
+            {% for item in summaries %}
+                <li>
+                {{item}}
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+<!--
+    <footer>
+        <p>Optional Footer Text</p>
+        <a href="work_from_home_setup.html">Q1: Work From Home</a>
+        <a href="interesting_project.html">Q2: Interesting Projects</a>
+        <a href="ai_tool_use.html">Q3: AI Tool Use</a>
+        <img src="bger logo.png" alt="Logo" />
+    </footer>
+    -->
+</body>
+</html>

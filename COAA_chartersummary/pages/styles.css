@@ -23,6 +23,11 @@ body {
     height: 40px;
   }
 
+  h2 {
+    padding: 0.1rem 2rem;
+    display: flex;
+  }
+
   .content {
     display: flex;
     height: calc(100vh - 160px); /* Adjusts for header + footer height */
@@ -32,18 +37,18 @@ body {
 
   .column {
     flex: 1;
-    padding: 1rem 2rem;
+    /*padding: 1rem 2rem;*/
     box-sizing: border-box;
   }
 
   .left-column ul {
     font-size: 1.5rem;
-    line-height: 2.25rem;
+    /*line-height: 2.25rem;*/
   }
 
   .right-column ul {
-    font-size: 3.5rem;
-    line-height: 4.25rem;
+    font-size: 3rem;
+    /*line-height: 4.25rem; */
   }
 
   ul {

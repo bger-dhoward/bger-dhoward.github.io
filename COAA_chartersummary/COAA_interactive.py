@@ -3,6 +3,11 @@ import os
 import csv
 from jinja2 import Environment, FileSystemLoader
 import argparse
+import openpyxl
+import tkinter as tk
+from tkinter import filedialog
+from pathlib import Path
+
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -11,12 +16,15 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 environment = Environment(loader=FileSystemLoader("templates/"))
-template = environment.get_template('page_template.txt')
+template = environment.get_template('coaa_template.txt')
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 #RESPONSE_SPREADSHEET_ID = "1cHKk2LKpIdgBpFtBOD-awZhULixMA2iQwk_fRSUjlMA"
 RESPONSE_SPREADSHEET_ID = "1sPpnOZzu5X9uzwhgP1gVRLmIcajrmtw9SKM_E8jqCQs"
 #RESPONSE_RANGE_NAME = "Responses!A1:F100"
+N_TESTS = 20
+
+MIN_RESPONSE_LENGTH = 5
 
 RESPONSE_RANGES = {"q1": "Q1!A1:D200",
                    "q2": "Q2!A1:D200",
@@ -25,21 +33,26 @@ RESPONSE_RANGES = {"q1": "Q1!A1:D200",
 
 criteria_options = {
     1:"Identify common themes as summaries. Provide only the summaries without any introductory text. Provide each as a single phrase or sentence on its own line. Separate out any responses that seem to be not related to the question and provide them at the end, prefixed with a '$' symbol.",
-    2:"Identify common themes as summaries. Provide only the summaries without any introductory text. Provide each as a single phrase or sentence on its own line. Provide at most 3 summaries",
+    2:"Identify common themes as summaries. Provide only the summaries without any introductory text. Provide each as a single phrase or sentence on its own line. Provide at most 3 summaries. Prefix each summary with a '$' sign.",
     }
 
-parser = argparse.ArgumentParser(prog = "COAA Survey Summarizer")
-parser.add_argument('question', help='Which question to summarize (q1, q2, q3)')
-parser.add_argument('--file', help='Name of source data file to pull responses from in case of automation errors') # TODO: IMPLEMENT THIS FUNCTIONALITY
-args = parser.parse_args()
-question = args.question
+question_definitions = {"q1": "What is the greatest measure of project success to you?",
+                        "q2": "What is the biggest key to facilitating open dialog?",
+                        "q3": "What aspect of the project charter process would you like to know more about before implementing on one of your projects?",                        
+                        }
 
-if question.lower() in RESPONSE_RANGES.keys():
-    RESPONSE_RANGE_NAME = RESPONSE_RANGES[question.lower()]
-else:
-    print(f"Question value '{question}' is not a valid question.")
-    exit()
+def get_user_responses_from_csv(filename):
+    with open(filename) as file:
+        reader = csv.reader(file)
+        responses = list(reader)
+    
+    return responses
 
+def get_user_response_from_excel(filename):
+    wb = openpyxl.load_workbook(filename=filename)
+    ws = wb[wb.sheetnames[0]]
+    data = list(ws.values)
+    return data[1:]
 
 def get_user_responses_from_cloud():
     creds = None
@@ -98,6 +111,15 @@ def generate_bger_survey_prompt(question, responses_text, criteria):
     """
     return prompt
 
+def generate_coaa_survey_prompt(question, response_text, criteria):
+    prompt = f"""A survey of conference attendees asked the following question: '{question}'.
+    The responses will be provided at the end of this message.
+    Provide summaries of the survey responses using this criteria: '{criteria}'.
+    These are the responses:
+    {response_text}
+"""
+    return prompt
+
 
 def ask_model(prompt):
     response = ollama.chat(model="llama3.2", messages=[
@@ -108,68 +130,94 @@ def ask_model(prompt):
 
 
 if __name__ == "__main__":
-    values = get_user_responses_from_cloud()
-    q1_responses = "\n".join([row[2] for row in values])
-    q2_responses = "\n".join([row[3] for row in values])
-    q3_responses = "\n".join([row[4] for row in values])
 
-    q1 = "What would be your ideal 'work-from-home' setup? (Location, atmosphere, tools, etc)"
-    q2 = "What is the most exciting or interesting aspect of one of your current projects?"
-    q3 = "If you use any AI tools for work, what is the most common way you use it?"
+    parser = argparse.ArgumentParser(prog = "COAA Survey Summarizer")
+    parser.add_argument('question_num', help='Which question to summarize (q1, q2, q3)')
+    parser.add_argument('--file', help='Name of source data file to pull responses from in case of automation errors') # TODO: IMPLEMENT THIS FUNCTIONALITY
+    parser.add_argument('--csv', help="Name of csv file to pull responses from in case of automation errors")
+    parser.add_argument('--excel', help="Name of .xlsx file to pull responses from.  Must be downloaded from MS Forms")
+    parser.add_argument('--askfile', help="Leave blank to ask file to open", action='store_true')
+    parser.add_argument('--test', help="Generate a number of test responses from AI to terminal - no HTML output.", action='store_true')
+    args = parser.parse_args()
+    question_num = args.question_num.lower()
 
-    filenames = ["work_from_home_setup",
-                 "interesting_project",
-                 "ai_tool_use"]
+    if question_num in RESPONSE_RANGES.keys():
+        RESPONSE_RANGE_NAME = RESPONSE_RANGES[question_num]
+    else:
+        print(f"Question value '{question_num}' is not a valid question.")
+        exit()
 
+    question_text = question_definitions[question_num]
+    
+    if args.csv:
+        responses = [row[0] for row in get_user_responses_from_csv(args.csv)]
+        print(responses)
+    elif args.excel:
+        data = get_user_response_from_excel(args.excel)
+        responses = [row[5] for row in data if len(row[5]) >= MIN_RESPONSE_LENGTH]
+    elif args.askfile:
+        root = tk.Tk()
+        root.withdraw()
+        picked_file = filedialog.askopenfilename(title='Select .XLSX data file', filetypes=[("Excel (.xlsx)", ".xlsx")])
+        data = get_user_response_from_excel(picked_file)
+        responses = [row[5] for row in data if len(row[5]) >= MIN_RESPONSE_LENGTH]
+    else:
+        values = get_user_responses_from_cloud()
+        responses = [row[2] for row in values if len(row[2]) >= MIN_RESPONSE_LENGTH]
+    response_string = "\n".join(responses)
+
+    filename = question_num + "_summary.html"
     criteria = criteria_options[2]
 
-    q_sets = zip([q1, q2, q3],[q1_responses, q2_responses, q3_responses], filenames)
+    prompt = generate_coaa_survey_prompt(question_text, response_string, criteria)
 
-    for q, r, filename in q_sets:
-        prompt = generate_bger_survey_prompt(q, r, criteria)
-        response = ask_model(prompt)
-        print("============\nQuestion\n")    
-        print(q)
-        print("============\nResponses\n")
-        print(r)
-        print("============\nPrompt\n")  
-        print(prompt)
-        print("============\nAI Summary\n")
-        print(response)
-        print("\n")
+    break_tab = "\n\t"
+    meta_data = f"""
+==========
+Question number:        {question_num}
+Question text:          {question_text}
+Number of responses:    {len(responses)}
+
+Response text: 
+{break_tab.join(responses)}
+
+==========
+
+Criteria: {criteria}
+
+Prompt: {prompt}
+
+==========
+"""
+
+    print(meta_data)
+    if args.test:
+        print("=========\n\nTESTING\n\n==========")
+        print(f"# of tests: {N_TESTS}")
+        for i in range(N_TESTS):
+            model_response = ask_model(prompt)
+            print(f"=========\nModel Response TEST # {i}\n\n {model_response}")
+    else:
+        model_response = ask_model(prompt)
+
+        print(f"=========\nModel Response\n\n {model_response}")
+
+        onedrive_path = Path(r'C:\Users\dhoward\VMDO Architects\COAA Charlottesville 2025 - summary web pages')
+
+
+        summaries = [s.strip()[1:] for s in model_response.split("\n") if len(s) > 5 and s.startswith('$')]
+        summaries = summaries[:3]
+        #results_filename = "pages/" + filename + ".html"
+        results_filepath = onedrive_path / filename
+        context = {
+            "summaries": summaries,
+            "responses": responses,
+            "question_number": question_num,
+            "question_text": question_text
+        }
         
-        user_responses = [ur for ur in r.split("\n") if len(ur) > 5]
-        summary = [s for s in response.split("\n") if len(s) > 5]
-
-        results_filename = "pages/" + filename + ".html"
-        category = filename
-        context = {"category": category,
-                   "summary": summary,
-                   "user_responses": user_responses}
-        with open(results_filename, 'w', encoding='utf-8') as results_file:
+        with open(results_filepath, 'w', encoding='utf-8') as results_file:
             results_file.write(template.render(context))
     
-    """
-    print(os.getcwd())
-    for filename in [fn for fn in os.listdir() if fn.endswith('.csv')]:
-        data = get_user_responses(filename)
-        category = data[0][0]
-        # print(data)
-        prompt = generate_test_prompt(data)
-        print(filename, data[0])
-        response = ask_model(prompt)
-        summary = response.split("\n")
-
-        context = {"category": category,
-                   "summary": summary}
-        #print(response)
-        #print('\n\n')
-        #input('next?\n\n')
-
-        results_filename = category + ".html"
-        with open(results_filename, 'w', encoding='utf-8') as results:
-            results.write(template.render(context))
-    """
-    
-    input('hit enter to exit')
+    print(f"\n\n{'+'*10}\nDone!\n{'='*10}")
 
