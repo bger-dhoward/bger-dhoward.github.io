@@ -8,8 +8,8 @@
 </head>
 <body>
     <header>
-        <h1>COAA Connect: Why Good Projects Have Project Charters</h1><br>
-        <h2>Interactive: {{question_text}}</h2>
+        <h1>COAA Connect: Why Good Projects Have Project Charters</h1>
+        <h1>Interactive: {{question_text}}</h1>
     </header>
 
     <div class="content">
