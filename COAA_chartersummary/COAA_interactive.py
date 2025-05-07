@@ -218,6 +218,14 @@ Prompt: {prompt}
         
         with open(results_filepath, 'w', encoding='utf-8') as results_file:
             results_file.write(template.render(context))
+            print('done onedrive')
+        
+        local_repo = Path(r"C:\Users\dhoward\Documents\PYTHON\bger-dhoward.github.io\COAA_chartersummary\pages")
+        local_repo_filepath = local_repo / filename
+
+        with open(local_repo_filepath, 'w', encoding='utf-8') as results_file:
+            results_file.write(template.render(context))
+            print('done local repo')
     
     print(f"\n\n{'+'*10}\nDone!\n{'='*10}")
 
